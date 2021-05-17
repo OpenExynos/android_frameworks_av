@@ -33,6 +33,8 @@
 #include <utils/String8.h>
 #include <cutils/properties.h>
 
+#include "Exynos_OMX_Def.h"  // for NV21 format
+
 #if LOG_NDEBUG
 #define UNUSED_UNLESS_VERBOSE(x) (void)(x)
 #else
@@ -108,6 +110,10 @@ static int32_t getColorFormat(const char* colorFormat) {
 
     if (!strcmp(colorFormat, CameraParameters::PIXEL_FORMAT_YUV420SP)) {
         return OMX_COLOR_FormatYUV420SemiPlanar;
+    }
+
+    if (!strcmp(colorFormat, CameraParameters::PIXEL_FORMAT_YUV420SP_NV21)) {
+        return OMX_SEC_COLOR_FormatNV21Linear;
     }
 
     if (!strcmp(colorFormat, CameraParameters::PIXEL_FORMAT_YUV422I)) {

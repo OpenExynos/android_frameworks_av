@@ -70,7 +70,12 @@ NuPlayer::GenericSource::GenericSource(
       mPendingReadBufferTypes(0),
       mBuffering(false),
       mPrepareBuffering(false),
-      mPrevBufferPercentage(-1) {
+      mPrevBufferPercentage(-1)
+#ifdef USE_ALP_AUDIO
+      , mLeftOverBuffer(NULL),
+      mGroup(NULL)
+#endif
+	{
     resetDataSource();
     DataSource::RegisterDefaultSniffers();
 }
@@ -329,6 +334,16 @@ bool NuPlayer::GenericSource::isStreaming() const {
 }
 
 NuPlayer::GenericSource::~GenericSource() {
+#ifdef USE_ALP_AUDIO
+    if (mLeftOverBuffer) {
+        mLeftOverBuffer->release();
+        mLeftOverBuffer = NULL;
+    }
+    if (mGroup) {
+        delete mGroup;
+        mGroup = NULL;
+    }
+#endif
     if (mLooper != NULL) {
         mLooper->unregisterHandler(id());
         mLooper->stop();
@@ -796,6 +811,12 @@ void NuPlayer::GenericSource::onMessageReceived(const sp<AMessage> &msg) {
 
 
           if (track->mSource != NULL) {
+#ifdef USE_ALP_AUDIO
+              if (mLeftOverBuffer) {
+                  mLeftOverBuffer->release();
+                  mLeftOverBuffer = NULL;
+              }
+#endif
               track->mSource->stop();
           }
           track->mSource = source;
@@ -1226,6 +1247,12 @@ status_t NuPlayer::GenericSource::doSelectTrack(size_t trackIndex, bool select, 
         if (track == NULL) {
             return INVALID_OPERATION;
         }
+#ifdef USE_ALP_AUDIO
+        if (mLeftOverBuffer) {
+            mLeftOverBuffer->release();
+            mLeftOverBuffer = NULL;
+        }
+#endif
         track->mSource->stop();
         track->mSource = NULL;
         track->mPackets->clear();
@@ -1244,6 +1271,12 @@ status_t NuPlayer::GenericSource::doSelectTrack(size_t trackIndex, bool select, 
         }
         track->mIndex = trackIndex;
         if (track->mSource != NULL) {
+#ifdef USE_ALP_AUDIO
+            if (mLeftOverBuffer) {
+                mLeftOverBuffer->release();
+                mLeftOverBuffer = NULL;
+            }
+#endif
             track->mSource->stop();
         }
         track->mSource = mSources.itemAt(trackIndex);
@@ -1422,6 +1455,12 @@ sp<ABuffer> NuPlayer::GenericSource::mediaBufferToABuffer(
         meta->setInt32("trackIndex", mSubtitleTrack.mIndex);
     }
 
+#ifdef USE_ALP_AUDIO
+    int32_t eos;
+    if (mb->meta_data()->findInt32(kKeyEOSFlag, &eos)) {
+        meta->setInt32("eos", eos);
+    }
+#endif
     uint32_t dataType; // unused
     const void *seiData;
     size_t seiLength;
@@ -1463,6 +1502,111 @@ void NuPlayer::GenericSource::onReadBuffer(sp<AMessage> msg) {
         mPendingReadBufferTypes &= ~(1 << trackType);
     }
 }
+
+#ifdef USE_ALP_AUDIO
+status_t NuPlayer::GenericSource::makeCoalesceBuffer(Track* track, MediaBuffer **mbuf_, MediaSource::ReadOptions *options) {
+#ifdef USE_SEIREN_AUDIO
+    const int buf_size = 4 * 1024;
+#else
+    const int buf_size = 32 * 1024;
+#endif
+    if (mGroup == NULL) {
+        mGroup = new MediaBufferGroup;
+        mGroup->add_buffer(new MediaBuffer(buf_size));
+    }
+
+    int64_t timestampUs = 0;
+    int64_t lastBufferTimeUs = 0;
+    size_t offset = 0;
+    bool make_coalesce = false;
+    int32_t eos = 0;
+
+    MediaBuffer *mbuf = *mbuf_ = NULL;
+    MediaBuffer* coalesce = NULL;
+    status_t err = mGroup->acquire_buffer(&coalesce);
+    if (err != OK) {
+        ALOGE("ALP parsing : acquire_buffer failed.");
+        return err;
+    }
+
+
+    while(true){
+        if (mLeftOverBuffer) {
+            mbuf = mLeftOverBuffer;
+            mLeftOverBuffer = NULL;
+            err = OK;
+        } else {
+            err = track->mSource->read(&mbuf, options);
+        }
+        options->clearSeekTo();
+        if (err == OK) {
+            size_t remainingBytes = buf_size - offset;
+            if (mbuf->range_length() > remainingBytes) {
+                // There is no space to coalesce.
+                if (offset == 0) {
+                    ALOGE(
+                         "Codec's input buffers are too small to accomodate "
+                         "buffer read from source (buf_size = %d, mbuf->range_length = %d)",
+                         buf_size, mbuf->range_length());
+                    mbuf->release();
+                    mbuf = NULL;
+
+                    err = ERROR_END_OF_STREAM;
+                } else {
+                    mLeftOverBuffer = mbuf;
+                    make_coalesce = true;
+                }
+            } else {
+                CHECK(mbuf->meta_data()->findInt64(kKeyTime, &lastBufferTimeUs));
+                if (offset == 0)
+                    timestampUs = lastBufferTimeUs;
+
+                memcpy(((char*)coalesce->data()) + offset,
+                       (const uint8_t *)mbuf->data() + mbuf->range_offset(),
+                       mbuf->range_length());
+                offset += mbuf->range_length();
+
+                ALOGV("acc : %d \t\t len : %d \t\t %lld", offset, mbuf->range_length(),lastBufferTimeUs);
+
+                mbuf->release();
+                mbuf = NULL;
+
+#ifdef USE_SEIREN_AUDIO
+                // There is space but too much frame time.
+                if (lastBufferTimeUs - timestampUs < 150000ll)
+                    continue;
+                else
+                    make_coalesce = true;
+#else
+                continue;
+#endif
+            }
+        } else {
+            /* Have something error.
+             * But should make new MediaBuffer for accumulated frames already coalesced. */
+            if (offset > 0) {
+                eos = 1;
+                err = OK;
+                make_coalesce = true;
+            }
+        }
+        if (make_coalesce) {
+            coalesce->set_range(0, offset);
+            coalesce->meta_data()->setInt64(kKeyTime, timestampUs);
+            coalesce->meta_data()->setInt32(kKeyIsSyncFrame, 1);
+            coalesce->meta_data()->setInt32(kKeyEOSFlag, eos);
+
+            *mbuf_ = coalesce;
+        } else {
+            coalesce->release();
+        }
+
+        break;
+    }
+
+    return err;
+}
+#endif
 
 void NuPlayer::GenericSource::readBuffer(
         media_track_type trackType, int64_t seekTimeUs, int64_t *actualTimeUs, bool formatChange) {
@@ -1514,6 +1658,12 @@ void NuPlayer::GenericSource::readBuffer(
     if (seekTimeUs >= 0) {
         options.setSeekTo(seekTimeUs, MediaSource::ReadOptions::SEEK_PREVIOUS_SYNC);
         seeking = true;
+#ifdef USE_ALP_AUDIO
+        if (mLeftOverBuffer) {
+            mLeftOverBuffer->release();
+            mLeftOverBuffer = NULL;
+        }
+#endif
     }
 
     if (mIsWidevine) {
@@ -1522,7 +1672,32 @@ void NuPlayer::GenericSource::readBuffer(
 
     for (size_t numBuffers = 0; numBuffers < maxBuffers; ) {
         MediaBuffer *mbuf;
+#ifdef USE_ALP_AUDIO
+        status_t err;
+        const char *mime, *file_mime;
+
+        bool isALPaudio = false;
+        sp<MediaSource> source = mAudioTrack.mSource;
+        CHECK(mFileMeta->findCString(kKeyMIMEType, &file_mime));
+
+        if (source != NULL && !strncasecmp(file_mime, "audio/", 6)) {
+            sp<MetaData> meta = source->getFormat();
+            meta->findCString(kKeyMIMEType, &mime);
+            if (!strncasecmp(mime, MEDIA_MIMETYPE_AUDIO_MPEG, 10)
+#ifdef USE_SEIREN_AUDIO
+                || !strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_AAC)
+#endif
+               )
+                isALPaudio = true;
+        }
+
+        if (isALPaudio)
+            err = makeCoalesceBuffer(track, &mbuf, &options);
+        else
+            err = track->mSource->read(&mbuf, &options);
+#else
         status_t err = track->mSource->read(&mbuf, &options);
+#endif
 
         options.clearSeekTo();
 

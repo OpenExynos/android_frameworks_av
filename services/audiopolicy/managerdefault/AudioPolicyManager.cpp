@@ -1739,7 +1739,7 @@ status_t AudioPolicyManager::setStreamVolumeIndex(audio_stream_type_t stream,
         mStreams.addCurrentVolumeIndex(AUDIO_STREAM_ACCESSIBILITY, device, index);
         accessibilityDevice = getDeviceForStrategy(STRATEGY_ACCESSIBILITY, true /*fromCache*/);
     }
-    if ((device != AUDIO_DEVICE_OUT_DEFAULT) &&
+    if ((device == AUDIO_DEVICE_OUT_DEFAULT) ||
             (device & (strategyDevice | accessibilityDevice)) == 0) {
         return NO_ERROR;
     }

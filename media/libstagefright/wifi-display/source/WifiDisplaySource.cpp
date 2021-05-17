@@ -40,6 +40,11 @@
 
 #include <ctype.h>
 
+#ifdef USES_WIFI_DISPLAY
+#include <binder/IServiceManager.h>
+#include "ExynosHWCService.h"
+#endif
+
 namespace android {
 
 // static
@@ -85,9 +90,22 @@ WifiDisplaySource::WifiDisplaySource(
             VideoFormats::RESOLUTION_CEA, 5,
             VideoFormats::PROFILE_CHP,  // Constrained High Profile
             VideoFormats::LEVEL_32);    // Level 3.2
+
+#ifdef USES_WIFI_DISPLAY
+    sp<IServiceManager> sm = defaultServiceManager();
+    sp<IExynosHWCService> hwcService = interface_cast<android::IExynosHWCService>(sm->getService(String16("Exynos.HWCService")));
+    if (hwcService != NULL)
+        hwcService->setWFDMode(1);
+#endif
 }
 
 WifiDisplaySource::~WifiDisplaySource() {
+#ifdef USES_WIFI_DISPLAY
+    sp<IServiceManager> sm = defaultServiceManager();
+    sp<IExynosHWCService> hwcService = interface_cast<android::IExynosHWCService>(sm->getService(String16("Exynos.HWCService")));
+    if (hwcService != NULL)
+        hwcService->setWFDMode(0);
+#endif
 }
 
 static status_t PostAndAwaitResponse(

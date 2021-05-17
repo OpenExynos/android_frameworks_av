@@ -38,6 +38,10 @@
 
 #include <OMX_Video.h>
 
+#ifdef USES_WIFI_DISPLAY
+#define MAX_WAIT_TIME_US        100000
+#endif
+
 namespace android {
 
 Converter::Converter(
@@ -48,6 +52,11 @@ Converter::Converter(
     : mNotify(notify),
       mCodecLooper(codecLooper),
       mOutputFormat(outputFormat),
+#ifdef USES_WIFI_DISPLAY
+      mState(INTERNAL_STATE_UNINITIALIZED),
+      mPenddingOutputBufferCount(0),
+      mIsSecure(false),
+#endif
       mFlags(flags),
       mIsVideo(false),
       mIsH264(false),
@@ -72,6 +81,9 @@ Converter::Converter(
     } else if (!strcasecmp(MEDIA_MIMETYPE_AUDIO_RAW, mime.c_str())) {
         mIsPCMAudio = true;
     }
+#ifdef USES_WIFI_DISPLAY
+    mInputFormat = outputFormat->dup();
+#endif
 }
 
 void Converter::releaseEncoder() {
@@ -97,6 +109,11 @@ void Converter::shutdownAsync() {
 }
 
 status_t Converter::init() {
+#ifdef USES_WIFI_DISPLAY
+    mPenddingOutputBufferCount = 0;
+    mIsSecure = false;
+    mState = INTERNAL_STATE_INITIALIZED;
+#endif
     status_t err = initEncoder();
 
     if (err != OK) {
@@ -105,6 +122,62 @@ status_t Converter::init() {
 
     return err;
 }
+
+#ifdef USES_WIFI_DISPLAY
+void Converter::init(bool IsSecure)
+{
+    ALOGV("init secure %d", IsSecure);
+    mPenddingOutputBufferCount = 0;
+    mState = INTERNAL_STATE_UNINITIALIZED;
+    mIsSecure = IsSecure;
+    mOutputFormat = mInputFormat->dup();
+    status_t err = initEncoder();
+    if (err == OK) {
+        mState = INTERNAL_STATE_INITIALIZED;
+    } else {
+        ALOGE("initEncoder failed");
+        releaseEncoder();
+    }
+}
+
+void Converter::internalStop() {
+    ALOGV("internalStop mState %d", mState);
+    if (mState == INTERNAL_STATE_INITIALIZED) {
+        mState = INTERNAL_STATE_STOPPING;
+        usleep(10000);
+        if (mPenddingOutputBufferCount == 0) {
+            mState = INTERNAL_STATE_STOPPED;
+        } else {
+            unsigned int waitTimeUs = 0;
+            while ((waitTimeUs < MAX_WAIT_TIME_US) &&
+                    mState == INTERNAL_STATE_STOPPING) {
+                usleep(10000);
+                waitTimeUs += 10000;
+            }
+        }
+    } else {
+        ALOGE("internalStop() called on wrong state");
+    }
+}
+
+void Converter::internalShutdown() {
+    ALOGV("internalShutdown mState %d", mState);
+    while (mAvailEncoderInputIndices.size()) {
+        size_t bufferIndex = *mAvailEncoderInputIndices.begin();
+        mAvailEncoderInputIndices.erase(mAvailEncoderInputIndices.begin());
+        ALOGE("internalShutdown(), erase bufferIndex %zu, mAvailEncoderInputIndices size %zu",
+                bufferIndex, mAvailEncoderInputIndices.size());
+    }
+    while (mInputBufferQueue.size()) {
+        sp<ABuffer> buffer = *mInputBufferQueue.begin();
+        mInputBufferQueue.erase(mInputBufferQueue.begin());
+        ALOGE("internalShutdown(), erase buffer %p, mInputBufferQueue size %zu",
+                buffer.get(), mInputBufferQueue.size());
+    }
+
+    mDoMoreWorkPending = false;
+}
+#endif
 
 sp<IGraphicBufferProducer> Converter::getGraphicBufferProducer() {
     CHECK(mFlags & FLAG_USE_SURFACE_INPUT);
@@ -146,9 +219,23 @@ status_t Converter::initEncoder() {
     bool isAudio = !strncasecmp(outputMIME.c_str(), "audio/", 6);
 
     if (!mIsPCMAudio) {
+#ifdef USES_WIFI_DISPLAY
+        if (isAudio) {
+            mEncoder = MediaCodec::CreateByType(
+                    mCodecLooper, outputMIME.c_str(), true /* encoder */);
+        } else {
+            if (mIsSecure) {
+                mEncoder = MediaCodec::CreateByComponentName(
+                        mCodecLooper, "OMX.Exynos.AVC.Encoder.secure");
+            } else {
+                mEncoder = MediaCodec::CreateByComponentName(
+                        mCodecLooper, "OMX.Exynos.AVC.Encoder");
+            }
+        }
+#else
         mEncoder = MediaCodec::CreateByType(
                 mCodecLooper, outputMIME.c_str(), true /* encoder */);
-
+#endif
         if (mEncoder == NULL) {
             return ERROR_UNSUPPORTED;
         }
@@ -295,8 +382,13 @@ void Converter::onMessageReceived(const sp<AMessage> &msg) {
         {
             int32_t what;
             CHECK(msg->findInt32("what", &what));
-
+#ifdef USES_WIFI_DISPLAY
+            if ((!mIsPCMAudio && mEncoder == NULL) ||
+                    mState == INTERNAL_STATE_STOPPING ||
+                    mState == INTERNAL_STATE_STOPPED) {
+#else
             if (!mIsPCMAudio && mEncoder == NULL) {
+#endif
                 ALOGV("got msg '%s' after encoder shutdown.",
                       msg->debugString().c_str());
 
@@ -330,7 +422,23 @@ void Converter::onMessageReceived(const sp<AMessage> &msg) {
                     accessUnit->setMediaBufferBase(NULL);
                     break;
                 }
-
+#ifdef USES_WIFI_DISPLAY
+                int32_t isDRM = 0;
+                if (accessUnit->meta()->findInt32("isDRM", &isDRM)) {
+                    if (mIsSecure != !!isDRM) {
+                        accessUnit->setMediaBufferBase(NULL);
+                        ALOGW("Secure State is not matched.(frame:%d, enc:%d)", isDRM, mIsSecure);
+                        if (mPenddingOutputBufferCount == 0) {
+                            internalStop();
+                            internalShutdown();
+                            releaseEncoder();
+                            init(!!isDRM);
+                            requestIDRFrame();
+                        }
+                        break;
+                    }
+                }
+#endif
 #if 0
                 MediaBuffer *mbuf =
                     (MediaBuffer *)(accessUnit->getMediaBufferBase());
@@ -440,6 +548,9 @@ void Converter::onMessageReceived(const sp<AMessage> &msg) {
         case kWhatReleaseOutputBuffer:
         {
             if (mEncoder != NULL) {
+#ifdef USES_WIFI_DISPLAY
+                mPenddingOutputBufferCount--;
+#endif
                 size_t bufferIndex;
                 CHECK(msg->findInt32("bufferIndex", (int32_t*)&bufferIndex));
                 CHECK(bufferIndex < mEncoderOutputBuffers.size());
@@ -727,6 +838,9 @@ status_t Converter::doMoreWork() {
                 int32_t rangeLength, rangeOffset;
                 CHECK(outbuf->meta()->findInt32("rangeOffset", &rangeOffset));
                 CHECK(outbuf->meta()->findInt32("rangeLength", &rangeLength));
+#ifdef USES_WIFI_DISPLAY
+                rangeLength = handle->data[3];
+#endif
                 outbuf->meta()->setPointer("handle", NULL);
 
                 // MediaSender will post the following message when HDCP
@@ -734,6 +848,9 @@ status_t Converter::doMoreWork() {
                 sp<AMessage> notify(new AMessage(kWhatReleaseOutputBuffer, this));
                 notify->setInt32("bufferIndex", bufferIndex);
 
+#ifdef USES_WIFI_DISPLAY
+                mPenddingOutputBufferCount++;
+#endif
                 buffer = new ABuffer(
                         rangeLength > (int32_t)size ? rangeLength : size);
                 buffer->meta()->setPointer("handle", handle);
@@ -749,6 +866,9 @@ status_t Converter::doMoreWork() {
             ALOGV("[%s] time %lld us (%.2f secs)",
                     mIsVideo ? "video" : "audio", (long long)timeUs, timeUs / 1E6);
 
+#ifdef USES_WIFI_DISPLAY
+            if (handle == NULL || !mIsVideo)
+#endif
             memcpy(buffer->data(), outbuf->base() + offset, size);
 
             if (flags & MediaCodec::BUFFER_FLAG_CODECCONFIG) {
@@ -758,6 +878,12 @@ status_t Converter::doMoreWork() {
                     }
                     mOutputFormat->setBuffer("csd-0", buffer);
                 }
+#ifdef USES_WIFI_DISPLAY
+                else {
+                    mPenddingOutputBufferCount--;
+                    mEncoder->releaseOutputBuffer(bufferIndex);
+                }
+#endif
             } else {
                 if (mNeedToManuallyPrependSPSPPS
                         && mIsH264

@@ -95,6 +95,22 @@ private:
     sp<AMessage> mNotify;
     sp<ALooper> mCodecLooper;
     sp<AMessage> mOutputFormat;
+#ifdef USES_WIFI_DISPLAY
+    enum InternalState {
+        INTERNAL_STATE_UNINITIALIZED,
+        INTERNAL_STATE_INITIALIZED,
+        INTERNAL_STATE_STOPPING,
+        INTERNAL_STATE_STOPPED
+    };
+
+    InternalState mState;
+    int mPenddingOutputBufferCount;
+    bool mIsSecure;
+    sp<AMessage> mInputFormat;
+    void init(bool IsSecure);
+    void internalStop();
+    void internalShutdown();
+#endif
     uint32_t mFlags;
     bool mIsVideo;
     bool mIsH264;

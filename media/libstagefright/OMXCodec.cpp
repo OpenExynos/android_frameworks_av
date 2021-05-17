@@ -56,6 +56,8 @@
 
 #include "include/avc_utils.h"
 
+#include "Exynos_OMX_Def.h"
+
 namespace android {
 
 // Treat time out as an error if we have not received any output
@@ -263,6 +265,12 @@ uint32_t OMXCodec::getComponentQuirks(
     }
     if (info->hasQuirk("output-buffers-are-unreadable")) {
         quirks |= kOutputBuffersAreUnreadable;
+    }
+    if (info->hasQuirk("supports-multiple-frames-per-input")) {
+        quirks |= kSupportsMultipleFramesPerInputBuffer;
+    }
+    if (info->hasQuirk("needs-flush-before-disable")) {
+        quirks |= kNeedsFlushBeforeDisable;
     }
 
     return quirks;
@@ -577,6 +585,12 @@ status_t OMXCodec::configureCodec(const sp<MetaData> &meta) {
             CHECK(meta->findData(kKeyOpusSeekPreRoll, &type, &data, &size));
             addCodecSpecificData(data, size);
         }
+#ifdef USE_SEIREN_AUDIO
+        else if (meta->findData(kKeyHdr, &type, &data, &size)) {
+            CODEC_LOGE("Codec specific information of size %zu", size);
+            addCodecSpecificData(data, size);
+        }
+#endif
     }
 
     int32_t bitRate = 0;
@@ -803,13 +817,14 @@ status_t OMXCodec::setVideoPortFormatType(
 
 static size_t getFrameSize(
         OMX_COLOR_FORMATTYPE colorFormat, int32_t width, int32_t height) {
-    switch (colorFormat) {
+    switch ((int)colorFormat) {
         case OMX_COLOR_FormatYCbYCr:
         case OMX_COLOR_FormatCbYCrY:
             return width * height * 2;
 
         case OMX_COLOR_FormatYUV420Planar:
         case OMX_COLOR_FormatYUV420SemiPlanar:
+        case OMX_SEC_COLOR_FormatNV21Linear:
         case OMX_TI_COLOR_FormatYUV420PackedSemiPlanar:
         /*
         * FIXME: For the Opaque color format, the frame size does not
@@ -2499,6 +2514,16 @@ void OMXCodec::onCmdComplete(OMX_COMMANDTYPE cmd, OMX_U32 data) {
                     // We implicitly resume pulling on our upstream source.
                     mPaused = false;
 
+#ifdef USE_ALP_AUDIO
+                    /*
+                     * This value has to be initialized when playing repeatedly
+                     * a very short file in Music application by repeat settings.
+                     * The file is short enough to gather all input frames
+                     * to one input buffer at once.
+                     */
+                    mNoMoreOutputData = false;
+#endif
+
                     drainInputBuffers();
                     fillOutputBuffers();
                 }
@@ -2789,10 +2814,18 @@ void OMXCodec::fillOutputBuffers() {
                 == mPortBuffers[kPortIndexInput].size()
             && countBuffersWeOwn(mPortBuffers[kPortIndexOutput])
                 == mPortBuffers[kPortIndexOutput].size()) {
+#ifdef USE_ALP_AUDIO
+        /* Exynos mp3 decoder should be finished by EOS flag in output buffer. */
+        /* Do not apply this workaround */
+        if (strcmp(mComponentName, "OMX.Exynos.MP3.Decoder") != 0) {
+#endif
         mNoMoreOutputData = true;
         mBufferFilled.signal();
 
         return;
+#ifdef USE_ALP_AUDIO
+        }
+#endif
     }
 
     Vector<BufferInfo> *buffers = &mPortBuffers[kPortIndexOutput];
@@ -3066,12 +3099,30 @@ bool OMXCodec::drainInputBuffer(BufferInfo *info) {
             break;
         }
 
+#ifdef USE_ALP_AUDIO
+#ifndef USE_SEIREN_AUDIO
+        /*
+         * In ALP mode, 250ms restriction is not required.
+         * SRP driver must have enough frames for the size of its input buffer.
+         */
+        if (strcmp(mComponentName, "OMX.Exynos.MP3.Decoder") != 0) {
+#endif
+#endif
         int64_t coalescedDurationUs = lastBufferTimeUs - timestampUs;
 
+#ifdef USE_SEIREN_AUDIO
+        if (coalescedDurationUs > 150000ll) {
+#else
         if (coalescedDurationUs > 250000ll) {
+#endif
             // Don't coalesce more than 250ms worth of encoded data at once.
             break;
         }
+#ifdef USE_ALP_AUDIO
+#ifndef USE_SEIREN_AUDIO
+        }
+#endif
+#endif
     }
 
     if (n > 1) {

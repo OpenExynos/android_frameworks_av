@@ -40,6 +40,12 @@ enum {
 
     // a rectangle, if absent assumed to be (0, 0, width - 1, height - 1)
     kKeyCropRect          = 'crop',
+#ifdef USE_SEIREN_AUDIO
+    kKeyHdr               = 'hdrd',  // raw data for ittiam parser
+#endif
+#ifdef USE_ALP_AUDIO
+    kKeyEOSFlag           = 'EOSf',
+#endif
 
     kKeyRotation          = 'rotA',  // int32_t (angle in degrees)
     kKeyIFramesInterval   = 'ifiv',  // int32_t
@@ -188,6 +194,9 @@ enum {
     kTypeAVCC        = 'avcc',
     kTypeHVCC        = 'hvcc',
     kTypeD263        = 'd263',
+#ifdef USE_SEIREN_AUDIO
+    kTypeHdr         = 'hdrd',  // raw data for Ittiam parser
+#endif
 };
 
 class MetaData : public RefBase {

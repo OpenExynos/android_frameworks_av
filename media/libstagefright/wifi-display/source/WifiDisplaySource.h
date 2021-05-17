@@ -113,7 +113,11 @@ private:
     static const int64_t kPlaybackSessionTimeoutSecs = 30;
 
     static const int64_t kPlaybackSessionTimeoutUs =
+#ifdef USES_WIFI_DISPLAY
+        kPlaybackSessionTimeoutSecs * 10000000ll;
+#else
         kPlaybackSessionTimeoutSecs * 1000000ll;
+#endif
 
     static const AString sUserAgent;
 

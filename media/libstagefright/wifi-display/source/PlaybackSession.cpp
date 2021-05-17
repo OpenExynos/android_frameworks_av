@@ -47,6 +47,13 @@
 
 #include <OMX_IVCommon.h>
 
+#ifdef USES_WIFI_DISPLAY
+#define SINK_BQ_BUF_COUNT   8
+#endif
+#ifdef USES_VDS_YUV420SPM
+#include "exynos_format.h"
+#endif
+
 namespace android {
 
 struct WifiDisplaySource::PlaybackSession::Track : public AHandler {
@@ -951,6 +958,10 @@ status_t WifiDisplaySource::PlaybackSession::addSource(
         format->setInt32("store-metadata-in-buffers", true);
         format->setInt32("store-metadata-in-buffers-output", (mHDCP != NULL)
                 && (mHDCP->getCaps() & HDCPModule::HDCP_CAPS_ENCRYPT_NATIVE));
+#ifdef USES_WIFI_DISPLAY
+        format->setInt32("NeedContigMemory", (mHDCP != NULL)
+                && (mHDCP->getCaps() & HDCPModule::HDCP_CAPS_ENCRYPT_NATIVE));
+#endif
         format->setInt32(
                 "color-format", OMX_COLOR_FormatAndroidOpaque);
         format->setInt32("profile-idc", profileIdc);
@@ -1045,6 +1056,16 @@ status_t WifiDisplaySource::PlaybackSession::addVideoSource(
 
     sp<SurfaceMediaSource> source = new SurfaceMediaSource(width, height);
 
+#ifdef USES_VDS_YUV420SPM
+    sp<IGraphicBufferConsumer> smsConsumer = source->getConsumer();
+    smsConsumer->setDefaultBufferFormat(HAL_PIXEL_FORMAT_EXYNOS_YCbCr_420_SP_M);
+#endif
+
+#ifdef USES_VDS_BGRA8888
+    sp<IGraphicBufferConsumer> smsConsumer = source->getConsumer();
+    smsConsumer->setDefaultBufferFormat(HAL_PIXEL_FORMAT_BGRA_8888);
+#endif
+
     source->setUseAbsoluteTimestamps();
 
     sp<RepeaterSource> videoSource =
@@ -1064,6 +1085,9 @@ status_t WifiDisplaySource::PlaybackSession::addVideoSource(
     CHECK_EQ(err, (status_t)OK);
 
     mProducer = source->getProducer();
+#ifdef USES_WIFI_DISPLAY
+    mProducer->setBufferCount(SINK_BQ_BUF_COUNT);
+#endif
 
     return OK;
 }

@@ -673,7 +673,7 @@ void CameraClient::disableMsgType(int32_t msgType) {
 }
 
 #define CHECK_MESSAGE_INTERVAL 10 // 10ms
-bool CameraClient::lockIfMessageWanted(int32_t msgType) {
+bool CameraClient::lockIfMessageWanted(int32_t msgType, int32_t sleepCountMax) {
     int sleepCount = 0;
     while (mMsgEnabled & msgType) {
         if (mLock.tryLock() == NO_ERROR) {
@@ -694,6 +694,11 @@ bool CameraClient::lockIfMessageWanted(int32_t msgType) {
             LOG1("lockIfMessageWanted(%d): enter sleep", msgType);
         }
         usleep(CHECK_MESSAGE_INTERVAL * 1000);
+        if (sleepCount % (sleepCountMax / 2) == 0)
+            ALOGW("lockIfMessageWanted(%d): time out", msgType);
+
+        if (sleepCount > sleepCountMax)
+            return false;
     }
     ALOGW("lockIfMessageWanted(%d): dropped unwanted message", msgType);
     return false;
@@ -721,7 +726,7 @@ void CameraClient::notifyCallback(int32_t msgType, int32_t ext1,
     sp<CameraClient> client = static_cast<CameraClient*>(getClientFromCookie(user).get());
     if (client.get() == nullptr) return;
 
-    if (!client->lockIfMessageWanted(msgType)) return;
+    if (!client->lockIfMessageWanted(msgType, 100)) return;
 
     switch (msgType) {
         case CAMERA_MSG_SHUTTER:

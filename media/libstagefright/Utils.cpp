@@ -452,6 +452,16 @@ status_t convertMetaDataToMessage(
         buffer->meta()->setInt64("timeUs", 0);
         msg->setBuffer("csd-2", buffer);
     }
+#ifdef USE_SEIREN_AUDIO
+    else if (meta->findData(kKeyHdr, &type, &data, &size)) {
+        sp<ABuffer> buffer = new ABuffer(size);
+        memcpy(buffer->data(), data, size);
+
+        buffer->meta()->setInt32("csd", true);
+        buffer->meta()->setInt64("timeUs", 0);
+        msg->setBuffer("csd-0", buffer);
+    }
+#endif
 
     *format = msg;
 

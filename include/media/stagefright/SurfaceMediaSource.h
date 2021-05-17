@@ -114,6 +114,9 @@ public:
     bool isMetaDataStoredInVideoBuffers() const;
 
     sp<IGraphicBufferProducer> getProducer() const { return mProducer; }
+#ifdef USES_WIFI_DISPLAY
+    sp<IGraphicBufferConsumer> getConsumer() const { return mConsumer; }
+#endif
 
     // To be called before start()
     status_t setMaxAcquiredBufferCount(size_t count);

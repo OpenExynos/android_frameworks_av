@@ -52,6 +52,7 @@ public:
     void setFloat(const char *key, float value);
     const char *get(const char *key) const;
     int getInt(const char *key) const;
+    long long int getInt64(const char *key) const;
     float getFloat(const char *key) const;
 
     void remove(const char *key);
@@ -59,6 +60,58 @@ public:
     void setPreviewSize(int width, int height);
     void getPreviewSize(int *width, int *height) const;
     void getSupportedPreviewSizes(Vector<Size> &sizes) const;
+    // Added for Factory in GalaxyCamera model [[[
+    void setZoomRangeCheckData(int min, int max);
+    void getZoomRangeCheckData(int *min, int *max) const;
+    void setZoomSlopeCheckData(int min, int max);
+    void getZoomSlopeCheckData(int *min, int *max) const;
+    void setPuntRangeData(int min, int max, int num);
+    void getPuntRangeData(int *min, int *max, int *num) const;
+    void setOISRangeData(int x_min, int x_max, int y_min, int y_max, int x_gain, int peak_x, int peak_y);
+    void getOISRangeData(int *x_min, int *x_max, int *y_min, int *y_max, int *x_gain, int *peak_x, int *peak_y) const;
+    void setVibRangeData(int x_min, int x_max, int y_min, int y_max, int min, int max);
+    void getVibRangeData(int *x_min, int *x_max, int *y_min, int *y_max, int *min, int *max) const;
+    void setGyroRangeData (int x1, int y1, int x2, int y2);
+    void getGyroRangeData (int *x1, int *y1, int *x2, int *y2) const;
+    void setAFScanLimit(int min, int max);
+    void getAFScanLimit(int *min, int *max) const;
+    void setAFScanRange(int min, int max);
+    void getAFScanRange(int *min, int *max) const;
+    void setAFResolCapture(int min, int max, int af_unit_step);
+    void getAFResolCapture(int *min, int *max, int *af_unit_step) const;
+    void setRTCManuallyTime(int year, int month, int day, int hour, int minute);
+    void getRTCManuallyTime(int *year, int *month, int *day, int *hour, int *minute) const;
+    void setRTCManuallyLimit(int min, int max);
+    void getRTCManuallyLimit(int *min, int *max) const;
+    void setIRISRange(int min, int max);
+    void getIRISRange(int *min, int *max) const;
+    void setGainLiveviewRange(int min, int max);
+    void getGainLiveviewRange(int *min, int *max) const;
+    void setSCSpeedtime(int x, int y);
+    void getSCSpeedtime(int *x, int *y) const;
+    void setGainCaptureRange(int min, int max);
+    void getGainCaptureRange(int *min, int *max) const;
+    void setFlashRange(int x, int y);
+    void getFlashRange(int *x, int *y) const;
+    void setWhiteBalanceValue(int indoorRG, int indoorBG, int outdoorRG, int outdoorBG);
+    void getWhiteBalanceValue(int *indoorRG, int *indoorBG, int *outdoorRG, int *outdoorBG) const;
+    void setAFLEDRange(int startX, int endX, int startY, int endY);
+    void getAFLEDRange(int *startX, int *endX, int *startY, int *endY) const;
+    void setAFLEDLVLimit(int min, int max);
+    void getAFLEDLVLimit(int *min, int *max) const;
+    void setAFDiffCheck(int min, int max);
+    void getAFDiffCheck(int *min, int *max) const;
+    void setTiltScanLimit(int min, int max);
+    void getTiltScanLimit(int *min, int *max) const;
+    void setTiltAfRange(int min, int max);
+    void getTiltAfRange(int *min, int *max) const;
+    void setTiltDiffRange(int min, int max);
+    void getTiltDiffRange(int * min, int * max) const;
+    void setIrCheckRGain(int min, int max);
+    void getIrCheckRGain(int *min, int *max) const;
+    void setIrCheckBGain(int min, int max);
+    void getIrCheckBGain(int *min, int *max) const;
+    // Added for Factory in GalaxyCamera model ]]]
 
     // Set the dimensions in pixels to the given width and height
     // for video frames. The given width and height must be one
@@ -99,6 +152,8 @@ public:
     void setPictureFormat(const char *format);
     const char *getPictureFormat() const;
 
+    void setAutoParameter(int now_av, int now_tv, int now_ev, int now_scenemode, int now_scenesubmode, int now_FDnum, int now_OTstatus, int now_Brightness, int now_iso);
+    void getAutoParameter(int* now_av, int* now_tv, int* now_ev, int* now_scenemode, int* now_scenesubmode, int* now_FDnum, int* now_OTstatus, int* now_Brightness, int* now_iso) const;
     void dump() const;
     status_t dump(int fd, const Vector<String16>& args) const;
 
@@ -114,6 +169,14 @@ public:
     // Parameter keys to communicate between camera application and driver.
     // The access (read/write, read only, or write only) is viewed from the
     // perspective of applications, not driver.
+
+    //////////////////////////////////////////////////////////////////////
+    //Added For GalaxyCamera model
+    // Current camera mode.
+    // Example value : "Smart Auto, Program, A, S, M"
+    static const char KEY_MODE[];
+    static const char KEY_CAPTURE_MODE[];
+    //////////////////////////////////////////////////////////////////////
 
     // Preview frame size in pixels (width x height).
     // Example value: "480x320". Read/Write.
@@ -246,6 +309,10 @@ public:
     // Current flash mode.
     // Example value: "auto" or FLASH_MODE_XXX constants. Read/write.
     static const char KEY_FLASH_MODE[];
+    // Current flash stand by on /off.
+    static const char KEY_FLASH_STANDBY[];
+    // Current flash charging on /off.
+    static const char KEY_FLASH_CHARGING[];
     // Supported flash modes.
     // Example value: "auto,on,off". Read only.
     static const char KEY_SUPPORTED_FLASH_MODES[];
@@ -401,6 +468,16 @@ public:
     // Current zoom value.
     // Example value: "0" or "6". Read/write.
     static const char KEY_ZOOM[];
+    static const char KEY_FOCUS_RANGE[];
+
+    // Companion chip stats mode control
+    static const char KEY_RT_HDR[];
+    static const char KEY_PHASE_AF[];
+    static const char KEY_DYNAMIC_RANGE_CONTROL[];
+
+    static const char KEY_ZOOM_ACTION[];
+    static const char KEY_ZOOM_LENS_STATUS[];
+
     // Maximum zoom value.
     // Example value: "6". Read only.
     static const char KEY_MAX_ZOOM[];
@@ -545,6 +622,72 @@ public:
     // Value for KEY_FOCUS_DISTANCES.
     static const char FOCUS_DISTANCE_INFINITY[];
 
+    // Current ISO setting.
+    static const char KEY_ISO[];
+
+    // Current Focus Area Mode setting.
+    static const char KEY_FOCUS_AREA_MODE[];
+
+    // Current Face Detection setting.
+    static const char KEY_FACEDETECT[];
+
+    // Current Metering setting.
+    static const char KEY_METERING[];
+
+    // Current Contrast setting.
+    static const char KEY_CONTRAST[];
+
+    // Current Sharpness setting.
+    static const char KEY_SHARPNESS[];
+
+    // Current Saturation setting.
+    static const char KEY_SATURATION[];
+
+    // Current bracket aeb setting.
+    static const char KEY_BRACKET_AEB[];
+
+    // Current bracket wbb setting.
+    static const char KEY_BRACKET_WBB[];
+
+    // Current Image Stabilizer(OIS) setting.
+    static const char KEY_IMAGE_STABILIZER[];
+
+    // Current video frame rate setting.
+    static const char KEY_VIDEO_FRAME_RATE[];
+
+    // Current shutter speed setting.
+    static const char KEY_SHUTTER_SPEED[];
+
+    // Current aperture setting.
+    static const char KEY_APERTURE[];
+
+    // Current Continuous settings.
+    static const char KEY_CONTINUOUS_MODE[];
+
+    // Current OIS settings.
+    // Example value: "still", "movie", "continuous", "vss".
+    static const char KEY_OIS[];
+    // Current ato values.
+    // Example values "aperture,shutter-speed,evc,scene,sub-scene"
+    static const char KEY_AUTO_VALUE[];
+
+    // Current RawDataSave values.
+    // Example value : 0 means off, 1 means on.
+    static const char KEY_RAW_SAVE[];
+
+    // Current Burst shot save folder.
+    static const char KEY_CAPTURE_BURST_FILEPATH[];
+
+    // Current Address.
+    static const char KEY_CURRENT_ADDRESS[];
+
+    // Values for continuous mode settings.
+    static const char CONTINUOUS_OFF[];
+    static const char CONTINUOUS_ON[];
+
+    static const char KEY_WEATHER[];
+    static const char KEY_CITYID[];
+
     // Values for white balance settings.
     static const char WHITE_BALANCE_AUTO[];
     static const char WHITE_BALANCE_INCANDESCENT[];
@@ -554,6 +697,15 @@ public:
     static const char WHITE_BALANCE_CLOUDY_DAYLIGHT[];
     static const char WHITE_BALANCE_TWILIGHT[];
     static const char WHITE_BALANCE_SHADE[];
+    // added for GalaxyCamera model
+    static const char WHITE_BALANCE_FLUORESCENT_H[];
+    static const char WHITE_BALANCE_FLUORESCENT_L[];
+    static const char WHITE_BALANCE_TUNGSTEN[];
+    static const char WHITE_BALANCE_CUSTOM[];
+    static const char WHITE_BALANCE_K[];
+    static const char WHITE_BALANCE_PROHIBITION[];
+    static const char WHITE_BALANCE_HORIZON[];
+    static const char WHITE_BALANCE_LEDLIGHT[];
 
     // Values for effect settings.
     static const char EFFECT_NONE[];
@@ -565,6 +717,13 @@ public:
     static const char EFFECT_WHITEBOARD[];
     static const char EFFECT_BLACKBOARD[];
     static const char EFFECT_AQUA[];
+    static const char EFFECT_ANTIQUE[];
+    static const char EFFECT_POINT_BLUE[];
+    static const char EFFECT_POINT_RED[];
+    static const char EFFECT_POINT_YELLOW[];
+    static const char EFFECT_WARM[];
+    static const char EFFECT_COLD[];
+    static const char EFFECT_WASHED[];
 
     // Values for antibanding settings.
     static const char ANTIBANDING_AUTO[];
@@ -586,6 +745,15 @@ public:
     // Constant emission of light during preview, auto-focus and snapshot.
     // This can also be used for video recording.
     static const char FLASH_MODE_TORCH[];
+    static const char FLASH_MODE_FILLIN[];
+    static const char FLASH_MODE_SLOW_SYNC[];
+    static const char FLASH_MODE_RED_EYE_FIX[];
+
+    static const char FLASH_VALUE_OF_ISP[];
+
+    // Values for flash stand by settings.
+    static const char FLASH_STANDBY_ON[];
+    static const char FLASH_STANDBY_OFF[];
 
     // Values for scene mode settings.
     static const char SCENE_MODE_AUTO[];
@@ -603,6 +771,10 @@ public:
     static const char SCENE_MODE_SPORTS[];
     static const char SCENE_MODE_PARTY[];
     static const char SCENE_MODE_CANDLELIGHT[];
+	static const char SCENE_MODE_BEACH_SNOW[];
+	static const char SCENE_MODE_DUSK_DAWN[];
+	static const char SCENE_MODE_FALL_COLOR[];
+	static const char SCENE_MODE_BACK_LIGHT[];
     // Applications are looking for a barcode. Camera driver will be optimized
     // for barcode reading.
     static const char SCENE_MODE_BARCODE[];
@@ -610,11 +782,21 @@ public:
     // capture strategy that extends the dynamic range of the captured
     // image in some fashion. Only the final image is returned.
     static const char SCENE_MODE_HDR[];
+    // added for GalaxyCamera model
+    static const char SCENE_MODE_BACK_LIGHT_PORTRAIT[];
+    static const char SCENE_MODE_WHITE[];
+    static const char SCENE_MODE_NATURAL_GREEN[];
+    static const char SCENE_MODE_BLUESKY[];
+    static const char SCENE_MODE_MACRO[];
+    static const char SCENE_MODE_MACRO_TEXT[];
+    static const char SCENE_MODE_MACRO_COLOR[];
+    static const char SCENE_MODE_TRIPOD[];
 
     // Pixel color formats for KEY_PREVIEW_FORMAT, KEY_PICTURE_FORMAT,
     // and KEY_VIDEO_FRAME_FORMAT
     static const char PIXEL_FORMAT_YUV422SP[];
     static const char PIXEL_FORMAT_YUV420SP[]; // NV21
+    static const char PIXEL_FORMAT_YUV420SP_NV21[]; // NV21
     static const char PIXEL_FORMAT_YUV422I[]; // YUY2
     static const char PIXEL_FORMAT_YUV420P[]; // YV12
     static const char PIXEL_FORMAT_RGB565[];
@@ -676,12 +858,374 @@ public:
     // To stop continuous focus, applications should change the focus mode to
     // other modes.
     static const char FOCUS_MODE_CONTINUOUS_PICTURE[];
+    static const char FOCUS_MODE_MANUAL[];
 
     // Values for light special effects
     // Low-light enhancement mode
     static const char LIGHTFX_LOWLIGHT[];
     // High-dynamic range mode
     static const char LIGHTFX_HDR[];
+
+    // add for GalaxyCamera model
+    static const char FOCUS_MODE_CONTINUOUS[];
+
+    // Values for iso settings.
+    static const char ISO_AUTO[];
+    static const char ISO_50[];
+    static const char ISO_80[];
+    static const char ISO_100[];
+    static const char ISO_200[];
+    static const char ISO_400[];
+    static const char ISO_800[];
+    static const char ISO_1600[];
+    static const char ISO_3200[];
+    static const char ISO_6400[];
+    static const char ISO_SPORTS[];
+    static const char ISO_NIGHT[];
+
+    // Values for focus area mode settings.
+    static const char FOCUS_AREA_CENTER[];
+    static const char FOCUS_AREA_MULTI[];
+    static const char FOCUS_AREA_SMART_TOUCH[];
+
+    // Values for focus range mode settings.
+    static const char FOCUS_RANGE_AUTO[];
+    static const char FOCUS_RANGE_MACRO[];
+    static const char FOCUS_RANGE_AUTO_MACRO[];
+
+    // Values for focus mode settings.
+    static const char FOCUS_MODE_MULTI[];
+    static const char FOCUS_MODE_TOUCH[];
+    static const char FOCUS_MODE_OBJECT_TRACKING[];
+    static const char FOCUS_MODE_FACE_DETECTION[];
+    static const char FOCUS_MODE_SMART_SELF[];
+
+    // Values for face detection settings.
+    static const char FACEDETECT_MODE_OFF[];
+    static const char FACEDETECT_MODE_NORMAL[];
+    static const char FACEDETECT_MODE_SMILESHOT[];
+    static const char FACEDETECT_MODE_BLINK[];
+
+    // Values for metering settings.
+    static const char METERING_OFF[];
+    static const char METERING_CENTER[];
+    static const char METERING_MATRIX[];
+    static const char METERING_SPOT[];
+
+    // Values for bracket settings.
+    static const char BRACKET_MODE_OFF[];
+    static const char BRACKET_MODE_AEB[];
+    static const char BRACKET_MODE_WBB[];
+
+    // Values for image stabilizer(ois) settings.
+    static const char IMAGE_STABILIZER_OFF[];
+    static const char IMAGE_STABILIZER_OIS[];
+    static const char IMAGE_STABILIZER_DUALIS[];
+
+    // Values for smart scene detection settings.
+    static const char SMART_SCENE_DETECT_OFF[];
+    static const char SMART_SCENE_DETECT_ON[];
+
+///////////////////////////////////////////////////////////////////////////
+    // Added for GalaxyCamera model
+    // Values for camera modes
+    static const char MODE_SMART_AUTO[];
+    static const char MODE_PROGRAM[];
+    static const char MODE_A[];
+    static const char MODE_S[];
+    static const char MODE_M[];
+    static const char MODE_MAGIC_SHOT[];
+    static const char MODE_BEAUTY_FACE[];
+    static const char MODE_BEST_PHOTO[];
+    static const char MODE_CONTINUOUS_SHOT[];
+    static const char MODE_BEST_FACE[];
+    static const char MODE_LANDSCAPE[];
+    static const char MODE_DAWN[];
+    static const char MODE_SNOW[];
+    static const char MODE_MACRO[];
+    static const char MODE_FOOD[];
+    static const char MODE_PARTY_INDOOR[];
+    static const char MODE_ACTION_FREEZE[];
+    static const char MODE_RICH_TONE[];
+    static const char MODE_PANORAMA[];
+    static const char MODE_WATERFALL[];
+    static const char MODE_ERASER[];
+    static const char MODE_SILHOUETTE[];
+    static const char MODE_SUNSET[];
+    static const char MODE_FIREWORKS[];
+    static const char MODE_LIGHT_TRACE[];
+    static const char MODE_SMART_SELFSHOT[];
+    static const char MODE_SMART_SUGGEST[];
+    static const char MODE_SMART_BUDDY[];
+
+    // Values for camera capture modes
+    static const char CAPTURE_MODE_SINGLE[];
+    static const char CAPTURE_MODE_HDR[];
+    static const char CAPTURE_MODE_NIGHT[];
+    static const char CAPTURE_MODE_CONTINUOUS[];
+    static const char CAPTURE_MODE_AE_BKT[];
+    static const char CAPTURE_MODE_RAW_SAVE[];
+    static const char CAPTURE_MODE_LOG_SAVE[];
+////////////////////////////////////////////////////////////////////////////
+
+    // Values for Zoom Action in GalaxyCamera model
+    static const char ZOOM_ACTION_KEY_START[];
+    static const char ZOOM_ACTION_PINCH_START[];
+    static const char ZOOM_ACTION_STOP[];
+    static const char ZOOM_ACTION_SLOW_TELE_START[];
+    static const char ZOOM_ACTION_SLOW_WIDE_START[];
+
+    //Self Shot ROI Box Info
+    static const char KEY_CURRENT_ROI_LEFT[];
+    static const char KEY_CURRENT_ROI_TOP[];
+    static const char KEY_CURRENT_ROI_WIDTH[];
+    static const char KEY_CURRENT_ROI_HEIGHT[];
+
+    // Added for Factory test in GalaxyCamera model
+    static const char KEY_FACTORY_COMMON[];
+    static const char KEY_FACTORY_COMMON_END_RESULT[];
+    static const char KEY_FACTORY_TESTNO[];
+    static const char KEY_FACTORY_COMMON_DOWN_RESULT[];
+    static const char KEY_FACTORY_LDC[];
+    static const char KEY_FACTORY_LSC[];
+    static const char KEY_FACTORY_LSC_ZOOM_INTERRUPT[];
+    static const char KEY_FACTORY_FAIL_STOP[];
+    static const char KEY_FACTORY_NODEFOCUSYES[];
+    static const char KEY_FACTORY_OIS[];
+    static const char KEY_FACTORY_OIS_RANGE_DATA[];
+    static const char KEY_FACTORY_OIS_CENTERING_MOVE_SHIFT_DATA[];
+    static const char KEY_FACTORY_VIB[];
+    static const char KEY_FACTORY_VIB_RANGE_DATA[];
+    static const char KEY_FACTORY_GYRO[];
+    static const char KEY_FACTORY_GYRO_RANGE_DATA[];
+    static const char KEY_FACTORY_BACKLASH_COUNT[];
+    static const char KEY_FACTORY_BACKLASH_MAX[];
+    static const char KEY_FACTORY_BACKLASH[];
+    static const char KEY_FACTORY_INTERPOLATION[];
+    static const char KEY_FACTORY_ZOOM[];
+    static const char KEY_FACTORY_ZOOM_STEP[];
+    static const char KEY_FACTORY_PUNT[];
+    static const char KEY_FACTORY_ZOOM_RANGE_CHECK_DATA[];
+    static const char KEY_FACTORY_ZOOM_SLOPE_CHECK_DATA[];
+    static const char KEY_FACTORY_PUNT_RANGE_DATA[];
+    static const char KEY_FACTORY_AF[];
+    static const char KEY_FACTORY_AF_STEP_SET[];
+    static const char KEY_FACTORY_AF_POSITION[];
+    static const char KEY_FACTORY_AF_SCAN_LIMIT[];
+    static const char KEY_FACTORY_AF_SCAN_RANGE[];
+    static const char KEY_FACTORY_AF_RESOL_CAPTURE[];
+    static const char KEY_FACTORY_DEFOCUS[];
+    static const char KEY_FACTORY_DEFOCUS_WIDE[];
+    static const char KEY_FACTORY_DEFOCUS_TELE[];
+    static const char KEY_FACTORY_RESOL_CAP[];
+    static const char KEY_FACTORY_MODE[];
+    static const char KEY_FACTORY_AFLENS[];
+    static const char KEY_FACTORY_RTC_MANUALLY_TIME[];
+    static const char KEY_FACTORY_RTC_MANUALLY_LIMIT[];
+    static const char KEY_FACTORY_IRIS_RANGE[];
+    static const char KEY_FACTORY_GAIN_LIVEVIEW_RANGE[];
+    static const char KEY_FACTORY_AF_ZONE[];
+    static const char KEY_FACTORY_OIS_MOVE_SHIFT[];
+    static const char KEY_FACTORY_OIS_MOVE_SHIFT_X[];
+    static const char KEY_FACTORY_OIS_MOVE_SHIFT_Y[];
+    static const char KEY_FACTORY_PUNT_SHORT_SCAN_DATA[];
+    static const char KEY_FACTORY_PUNT_LONG_SCAN_DATA[];
+    static const char KEY_FACTORY_LV_TARGET[];
+    static const char KEY_FACTORY_ADJ_IRIS[];
+    static const char KEY_FACTORY_ADJ_GAIN_LIVEVIEW[];
+    static const char KEY_FACTORY_SH_CLOSE_IRISNUM[];
+    static const char KEY_FACTORY_SH_CLOSE_RANGE[];
+    static const char KEY_FACTORY_SH_CLOSE_SETIRIS[];
+    static const char KEY_FACTORY_SH_CLOSE_ISO[];
+    static const char KEY_FACTORY_SH_CLOSE[];
+    static const char KEY_FACTORY_SH_CLOSE_SPEEDTIME[];
+    static const char KEY_FACTORY_FLICKER[];
+    static const char KEY_FACTORY_GAIN_CAPTURE_RANGE[];
+    static const char KEY_FACTORY_CAPTURE_GAIN[];
+    static const char KEY_FACTORY_CAPTURE_GAIN_OFFSET_VAL[];
+    static const char KEY_FACTORY_CAPTURE_GAIN_OFFSET_SIGN[];
+    static const char KEY_FACTORY_CAPTURE_CTRL[];
+    static const char KEY_FACTORY_AE_TARGET[];
+    static const char KEY_FACTORY_LSC_FSHD_TABLE[];
+    static const char KEY_FACTORY_LSC_FSHD_REFERENCE[];
+    static const char KEY_FACTORY_FLASH_RANGE[];
+    static const char KEY_FACTORY_FLASH_CMD[];
+    static const char KEY_FACTORY_FLASH_MANUAL_CHARGE[];
+    static const char KEY_FACTORY_FLASH_MANUAL_EN[];
+    static const char KEY_FACTORY_WB_VALUE[];
+    static const char KEY_FACTORY_WB_RANGE[];
+    static const char KEY_FACTORY_WB[];
+    static const char KEY_FACTORY_AF_LED_RANGE[];
+    static const char KEY_FACTORY_AF_LED_LV_LIMIT[];
+    static const char KEY_FACTORY_AF_LED_TIME[];
+    static const char KEY_FACTORY_AF_DIFF_CHECK[];
+    static const char KEY_FACTORY_DEFECTPIXEL_SET_NLV_CAPTURE[];
+    static const char KEY_FACTORY_DEFECTPIXEL_SET_NLV_DRAFT0[];
+    static const char KEY_FACTORY_DEFECTPIXEL_SET_NLV_DRAFT1[];
+    static const char KEY_FACTORY_DEFECTPIXEL_SET_NLV_DRAFT2[];
+    static const char KEY_FACTORY_DEFECTPIXEL_SET_NLV_DRAFT_HS[];
+    static const char KEY_FACTORY_DEFECTPIXEL_SET_NLV_DRAFT1_HD[];
+    static const char KEY_FACTORY_DEFECTPIXEL[];
+    static const char KEY_FACTORY_CAM_SYSMODE[];
+    static const char KEY_FACTORY_FLASH_CHECK [];
+    static const char KEY_FACTORY_FW_VER_ISP[];
+    static const char KEY_FACTORY_FW_VER_OIS[];
+    static const char KEY_FACTORY_FW_VER_RESULT[];
+    static const char KEY_FACTORY_LIVEVIEW_OFFSET_SIGN[];
+    static const char KEY_FACTORY_LIVEVIEW_OFFSET_VAL[];
+    static const char KEY_FACTORY_TILT_SCAN_LIMIT[];
+    static const char KEY_FACTORY_TILT_FIELD[];
+    static const char KEY_FACTORY_TILT_AF_RANGE[];
+    static const char KEY_FACTORY_TILT_DIFF_RANGE[];
+    static const char KEY_FACTORY_TILT_1TIME_SCRIPT_RUN[];
+    static const char KEY_FACTORY_IRCHECK_RGAIN[];
+    static const char KEY_FACTORY_IRCHECK_BGAIN[];
+    static const char KEY_FACTORY_IRCHECK_RUN[];
+
+    static const char FACTORY_FIRMWARE_DOWNLOAD[];
+    static const char FACTORY_DOWNLOAD_CHECK[];
+    static const char FACTORY_END_CHECK[];
+    static const char FACTORY_COMMON_SET_FOCUS_ZONE_MACRO[];
+
+    static const char FACTORY_LDC_OFF[];
+    static const char FACTORY_LDC_ON[];
+
+    static const char FACTORY_LSC_OFF[];
+    static const char FACTORY_LSC_ON[];
+    static const char FACTORY_LSC_LOG[];
+
+    static const char FACTORY_LSC_ZOOM_INTERRUPT_ENABLE[];
+    static const char FACTORY_LSC_ZOOM_INTERRUPT_DISABLE[];
+
+    static const char FACTORY_FAIL_STOP_ON[];
+    static const char FACTORY_FAIL_STOP_OFF[];
+    static const char FACTORY_FAIL_STOP_RUN[];
+    static const char FACTORY_FAIL_STOP_STOP[];
+
+    static const char FACTORY_NODEFOCUSYES_ON[];
+    static const char FACTORY_NODEFOCUSYES_OFF[];
+    static const char FACTORY_NODEFOCUSYES_RUN[];
+    static const char FACTORY_NODEFOCUSYES_STOP[];
+
+    static const char FACTORY_OIS_RETURN_TO_CENTER[];
+    static const char FACTORY_OIS_MODE_ON[];
+    static const char FACTORY_OIS_MODE_OFF[];
+    static const char FACTORY_OIS_RUN[];
+    static const char FACTORY_OIS_START[];
+    static const char FACTORY_OIS_STOP[];
+    static const char FACTORY_OIS_LOG[];
+
+    static const char FACTORY_VIB_START[];
+    static const char FACTORY_VIB_STOP[];
+    static const char FACTORY_VIB_LOG[];
+
+    static const char FACTORY_GYRO_START[];
+    static const char FACTORY_GYRO_STOP[];
+    static const char FACTORY_GYRO_LOG[];
+
+    static const char FACTORY_BACKLASH_INPUT[];
+    static const char FACTORY_BACKLASH_INPUT_MAX_THR[];
+    static const char FACTORY_BACKLASH_WIDE_RUN[];
+    static const char FACTORY_BACKLASH_LOG[];
+
+    static const char FACTORY_INTERPOLATION_USE[];
+    static const char FACTORY_INTERPOLATION_RELEASE[];
+
+    static const char FACTORY_ZOOM_MOVE_STEP[];
+    static const char FACTORY_ZOOM_RANGE_CHECK_START[];
+    static const char FACTORY_ZOOM_RANGE_CHECK_STOP[];
+    static const char FACTORY_ZOOM_SLOPE_CHECK_START[];
+    static const char FACTORY_ZOOM_SLOPE_CHECK_STOP[];
+    static const char FACTORY_ZOOM_STEP_TELE[];
+    static const char FACTORY_ZOOM_STEP_WIDE[];
+    static const char FACTORY_ZOOM_CLOSE[];
+    static const char FACTORY_ZOOM_MOVE_END_CHECK[];
+
+    static const char FACTORY_PUNT_RANGE_START[];
+    static const char FACTORY_PUNT_RANGE_STOP[];
+    static const char FACTORY_PUNT_SHORT_SCAN_DATA[];
+    static const char FACTORY_PUNT_SHORT_SCAN_START[];
+    static const char FACTORY_PUNT_SHORT_SCAN_STOP[];
+    static const char FACTORY_PUNT_LONG_SCAN_DATA[];
+    static const char FACTORY_PUNT_LONG_SCAN_START[];
+    static const char FACTORY_PUNT_LONG_SCAN_STOP[];
+    static const char FACTORY_PUNT_LOG[];
+
+    static const char FACTORY_PUNT_EEP_WRITE[];
+
+    static const char FACTORY_AF_LOCK_ON_SET[];
+    static const char FACTORY_AF_LOCK_OFF_SET[];
+    static const char FACTORY_AF_MOVE[];
+    static const char FACTORY_AF_MOVE_END_CHECK[];
+    static const char FACTORY_AF_STEP_LOG[];
+    static const char FACTORY_AF_LOCK_START[];
+    static const char FACTORY_AF_LOCK_STOP[];
+    static const char FACTORY_AF_RANGE_LOG[];
+    static const char FACTORY_AF_FOCUS_LOG[];
+    static const char FACTORY_AF_INTERRUPT_SET[];
+    static const char FACTORY_AF_STEP_SAVE[];
+    static const char FACTORY_AF_LED_END_CHECK[];
+    static const char FACTORY_AF_LED_LOG[];
+
+    static const char FACTORY_AF_POSITION_FAR[];
+    static const char FACTORY_AF_POSITION_NEAR[];
+    static const char FACTORY_AF_POSITION_POSITION[];
+
+    static const char FACTORY_DEFOCUS_RUN[];
+    static const char FACTORY_DEFOCUS_STOP[];
+
+    static const char FACTORY_CAP_COMP_ON[];
+    static const char FACTORY_CAP_COMP_OFF[];
+    static const char FACTORY_CAP_COMP_START[];
+    static const char FACTORY_CAP_COMP_STOP[];
+    static const char FACTORY_CAP_BARREL_ON[];
+    static const char FACTORY_CAP_BARREL_OFF[];
+    static const char FACTORY_CAP_BARREL_START[];
+    static const char FACTORY_CAP_BARREL_STOP[];
+    static const char FACTORY_MODE_A[];
+    static const char FACTORY_AFLENS_OPEN[];
+    static const char FACTORY_AFLENS_CLOSE[];
+    static const char FACTORY_AF_ZONE_NORMAL[];
+    static const char FACTORY_AF_ZONE_MACRO[];
+    static const char FACTORY_AF_ZONE_AUTO_MACRO[];
+    static const char FACTORY_ADJ_IRIS_RUN[];
+    static const char FACTORY_ADJ_IRIS_STOP[];
+    static const char FACTORY_ADJ_IRIS_LOG[];
+
+    static const char FACTORY_ADJ_GAIN_LIVEVIEW_RUN[];
+    static const char FACTORY_ADJ_GAIN_LIVEVIEW_STOP[];
+    static const char FACTORY_ADJ_GAIN_LIVEVIEW_LOG[];
+    static const char FACTORY_SH_CLOSE_LOG[];
+    static const char FACTORY_SH_CLOSE_RUN[];
+    static const char FACTORY_SH_CLOSE_STOP[];
+    static const char FACTORY_CAPTURE_GAIN_RUN[];
+    static const char FACTORY_CAPTURE_GAIN_STOP[];
+
+    static const char FACTORY_STILL_CAP_NORMAL[];
+    static const char FACTORY_STILL_CAP_DUALCAP[];
+    static const char FACTORY_STILL_CAP_ON[];
+    static const char FACTORY_STILL_CAP_OFF[];
+
+    static const char FACTORY_FLASH_STOBE_CHECK_ON[];
+    static const char FACTORY_FLASH_STOBE_CHECK_OFF[];
+    static const char FACTORY_FLASH_CHARGE[];
+    static const char FACTORY_FLASH_LOG[];
+
+    static const char FACTORY_WB_INDOOR_RUN[];
+    static const char FACTORY_WB_INDOOR_END_CHECK[];
+    static const char FACTORY_WB_OUTDOOR_RUN[];
+    static const char FACTORY_WB_OUTDOOR_END_CHECK[];
+    static const char FACTORY_WB_LOG[];
+
+    static const char FACTORY_DEFECTPIXEL_SCENARIO_6[];
+    static const char FACTORY_DEFECTPIXEL_RUN[];
+    static const char FACTORY_DEFECTPIXEL_END_CHECK[];
+    static const char FACTORY_DEFECTPIXEL_LOG[];
+    static const char FACTORY_SYSMODE_CAPTURE[];
+    static const char FACTORY_SYSMODE_MONITOR[];
+    static const char FACTORY_SYSMODE_PARAM[];
+
+    static const char FACTORY_FLASH_CHARGE_END_CHECK[];
 
     /**
      * Returns the the supported preview formats as an enum given in graphics.h

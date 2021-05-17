@@ -251,6 +251,19 @@ void NuPlayer::Decoder::onConfigure(const sp<AMessage> &format) {
     mComponentName.append(" decoder");
     ALOGV("[%s] onConfigure (surface=%p)", mComponentName.c_str(), mSurface.get());
 
+#ifdef USE_ALP_AUDIO
+    int32_t ALP = 0;
+    if (format->findInt32("ALP", &ALP) && ALP != 0) {
+        if (!strncasecmp(mime.c_str(), MEDIA_MIMETYPE_AUDIO_MPEG, 10))
+            mCodec = MediaCodec::CreateByComponentName(mCodecLooper,
+			   "OMX.Exynos.MP3.Decoder", NULL /* err */, mPid);
+#ifdef USE_SEIREN_AUDIO
+	else if (!strcasecmp(mime.c_str(), MEDIA_MIMETYPE_AUDIO_AAC))
+            mCodec = MediaCodec::CreateByComponentName(mCodecLooper, "OMX.Exynos.AAC.Decoder", NULL /* err */, mPid);
+#endif
+    }
+    if (mCodec == NULL)
+#endif
     mCodec = MediaCodec::CreateByType(
             mCodecLooper, mime.c_str(), false /* encoder */, NULL /* err */, mPid);
     int32_t secure = 0;

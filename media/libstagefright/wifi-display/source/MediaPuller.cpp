@@ -177,6 +177,11 @@ void MediaPuller::onMessageReceived(const sp<AMessage> &msg) {
                     mbuf->release();
                     mbuf = NULL;
                 } else {
+#ifdef USES_WIFI_DISPLAY
+                    int32_t isDrm = 0;
+                    if (mbuf->meta_data()->findInt32(kKeyIsDRM, &isDrm))
+                        accessUnit->meta()->setInt32("isDRM", isDrm);
+#endif
                     // video encoder will release MediaBuffer when done
                     // with underlying data.
                     accessUnit->setMediaBufferBase(mbuf);

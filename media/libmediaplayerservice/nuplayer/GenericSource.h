@@ -24,6 +24,8 @@
 #include "ATSParser.h"
 
 #include <media/mediaplayer.h>
+#include <media/stagefright/MediaSource.h>
+#include <media/stagefright/MediaBufferGroup.h>
 
 namespace android {
 
@@ -157,6 +159,11 @@ private:
 
     sp<ALooper> mLooper;
 
+#ifdef USE_ALP_AUDIO
+    MediaBuffer *mLeftOverBuffer;
+    MediaBufferGroup *mGroup;
+    status_t makeCoalesceBuffer(Track* track, MediaBuffer **mbuf, MediaSource::ReadOptions *options);
+#endif
     void resetDataSource();
 
     status_t initFromDataSource();

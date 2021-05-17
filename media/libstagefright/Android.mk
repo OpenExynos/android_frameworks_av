@@ -22,7 +22,6 @@ LOCAL_SRC_FILES:=                         \
         DRMExtractor.cpp                  \
         ESDS.cpp                          \
         FileSource.cpp                    \
-        FLACExtractor.cpp                 \
         FrameRenderTracker.cpp            \
         HTTPBase.cpp                      \
         JPEGSource.cpp                    \
@@ -129,12 +128,40 @@ LOCAL_SHARED_LIBRARIES += \
 
 LOCAL_CFLAGS += -Wno-multichar -Werror -Wno-error=deprecated-declarations -Wall
 
+ifeq ($(BOARD_USES_WIFI_DISPLAY),true)
+LOCAL_CFLAGS += -DUSES_WIFI_DISPLAY
+LOCAL_C_INCLUDES += $(TOP)/hardware/samsung_slsi/openmax/include/exynos
+endif
+
 # enable experiments only in userdebug and eng builds
 ifneq (,$(filter userdebug eng,$(TARGET_BUILD_VARIANT)))
 LOCAL_CFLAGS += -DENABLE_STAGEFRIGHT_EXPERIMENTS
 endif
 
+LOCAL_C_INCLUDES += $(TOP)/hardware/samsung_slsi/openmax/include/exynos
+
 LOCAL_CLANG := true
+
+ifeq ($(BOARD_USE_ALP_AUDIO),  true)
+LOCAL_CFLAGS += -DUSE_ALP_AUDIO
+endif
+
+ifeq ($(BOARD_USE_SEIREN_AUDIO), true)
+LOCAL_CFLAGS_32 += -DUSE_SEIREN_AUDIO -DNO_ITTIAM_FLAC
+LOCAL_CFLAGS_64 += -DUSE_SEIREN_AUDIO -DNO_ITTIAM_FLAC
+LOCAL_C_INCLUDES += \
+        $(TOP)/frameworks/av/media/libstagefright/ittiamextractors/flac/component/inc
+LOCAL_STATIC_LIBRARIES_32 += \
+        libIttiamFLACExtractor \
+        libittiam_flacparser
+LOCAL_SRC_FILES += \
+        FLACExtractor.cpp
+else
+LOCAL_SRC_FILES += \
+        FLACExtractor.cpp
+endif
+
+LOCAL_CFLAGS += -DSAMSUNG_AV_SYNC
 
 LOCAL_MODULE:= libstagefright
 

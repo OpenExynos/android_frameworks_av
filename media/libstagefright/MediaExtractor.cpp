@@ -33,6 +33,10 @@
 
 #include "matroska/MatroskaExtractor.h"
 
+#ifdef USE_SEIREN_AUDIO
+#include "ittiamextractors/flac/plugin/IttiamFLACExtractor.h"
+#endif
+
 #include <media/stagefright/foundation/AMessage.h>
 #include <media/stagefright/DataSource.h>
 #include <media/stagefright/MediaDefs.h>
@@ -101,7 +105,11 @@ sp<MediaExtractor> MediaExtractor::Create(
             || !strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_AMR_WB)) {
         ret = new AMRExtractor(source);
     } else if (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_FLAC)) {
+#if defined(USE_SEIREN_AUDIO) && !defined(NO_ITTIAM_FLAC)
+        ret = new IttiamFLACExtractor(source);
+#else
         ret = new FLACExtractor(source);
+#endif
     } else if (!strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_WAV)) {
         ret = new WAVExtractor(source);
     } else if (!strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_OGG)) {

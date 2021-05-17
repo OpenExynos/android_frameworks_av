@@ -63,6 +63,9 @@ AudioPlayer::AudioPlayer(
       mPlaying(false),
       mStartPosUs(0),
       mCreateFlags(flags) {
+#ifdef USE_ALP_AUDIO
+      mIsALPAudio = false;
+#endif
 }
 
 AudioPlayer::~AudioPlayer() {
@@ -125,6 +128,14 @@ status_t AudioPlayer::start(bool sourceAlreadyStarted) {
     int32_t numChannels, channelMask;
     success = format->findInt32(kKeyChannelCount, &numChannels);
     CHECK(success);
+#ifdef USE_ALP_AUDIO
+    const char *componentName;
+    if (format->findCString(kKeyDecoderComponent, &componentName) == true) {
+        if (strcmp(componentName, "OMX.Exynos.MP3.Decoder") == 0) {
+            mIsALPAudio = true;
+        }
+    }
+#endif
 
     if(!format->findInt32(kKeyChannelMask, &channelMask)) {
         // log only when there's a risk of ambiguity of channel mask selection
@@ -617,7 +628,7 @@ size_t AudioPlayer::fillBuffer(void *data, size_t size) {
                 mLatencyUs = (int64_t)mAudioTrack->latency() * 1000;
             }
 
-            if(mInputBuffer->range_length() != 0) {
+            if(mInputBuffer->range_length() != 0 && !mSeeking) {
                 CHECK(mInputBuffer->meta_data()->findInt64(
                         kKeyTime, &mPositionTimeMediaUs));
             }
@@ -639,12 +650,16 @@ size_t AudioPlayer::fillBuffer(void *data, size_t size) {
                 // and mPositionTimeRealUs
                 // before clearing mSeekTimeUs check if a new seek request has been received while
                 // we were reading from the source with mLock released.
+#ifdef USE_ALP_AUDIO
+                if (!mSeeking && !mIsALPAudio) {
+#else
                 if (!mSeeking) {
+#endif
                     mSeekTimeUs = 0;
                 }
             }
 
-            if (!useOffload()) {
+            if (!useOffload() && !mSeeking) {
                 mPositionTimeRealUs =
                     ((mNumFramesPlayed + size_done / mFrameSize) * 1000000)
                         / mSampleRate;
@@ -799,7 +814,18 @@ int64_t AudioPlayer::getMediaTimeUs() {
         realTimeOffset = 0;
     }
 
+#ifdef USE_ALP_AUDIO
+    /*
+     * Audio timestamp should be calculated not by input streams
+     * passed to the mp3 decoder but by played output frames.
+     */
+    if (mIsALPAudio)
+        return mSeekTimeUs + mPositionTimeRealUs + realTimeOffset;
+    else
+        return mPositionTimeMediaUs + realTimeOffset;
+#else
     return mPositionTimeMediaUs + realTimeOffset;
+#endif
 }
 
 bool AudioPlayer::getMediaTimeMapping(

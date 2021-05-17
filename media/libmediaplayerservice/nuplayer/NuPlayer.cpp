@@ -1563,6 +1563,26 @@ status_t NuPlayer::instantiateDecoder(bool audio, sp<DecoderBase> *decoder) {
             }
         }
     }
+#ifdef USE_ALP_AUDIO
+    AString mime;
+    CHECK(format->findString("mime", &mime));
+
+    const char *file_mime;
+    sp<MetaData> fileFormat = mSource->getFileFormatMeta();
+    CHECK(fileFormat->findCString(kKeyMIMEType, &file_mime));
+
+    if (audio && !strncasecmp(file_mime, "audio/", 6)) {
+        if (!strncasecmp(mime.c_str(), MEDIA_MIMETYPE_AUDIO_MPEG, 10)
+#ifdef USE_SEIREN_AUDIO
+            || !strcasecmp(mime.c_str(), MEDIA_MIMETYPE_AUDIO_AAC)
+#endif
+           ) {
+            format->setInt32("ALP", true);
+/*            GenericSource* gs = static_cast<GenericSource*>(mSource.get());
+            gs->setALPmode(true);*/
+        }
+    }
+#endif
     (*decoder)->init();
     (*decoder)->configure(format);
 

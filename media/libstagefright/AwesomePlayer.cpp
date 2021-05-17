@@ -1554,6 +1554,48 @@ status_t AwesomePlayer::initAudioDecoder() {
     if (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_RAW)) {
         ALOGV("createAudioPlayer: bypass OMX (raw)");
         mAudioSource = mAudioTrack;
+#ifdef USE_ALP_AUDIO
+     } else if (mVideoTrack == NULL && !strncasecmp(mime, MEDIA_MIMETYPE_AUDIO_MPEG, 10)) {
+        mAudioSource = OMXCodec::Create(
+            mClient.interface(), mAudioTrack->getFormat(),
+            false,  // createEncoder
+            mAudioTrack,
+            "OMX.Exynos.MP3.Decoder");
+        if (mAudioSource == NULL) {
+            mAudioSource = OMXCodec::Create(
+                    mClient.interface(), mAudioTrack->getFormat(),
+                    false,  // createEncoder
+                    mAudioTrack);
+        }
+#endif
+#ifdef USE_SEIREN_AUDIO
+     } else if (mVideoTrack == NULL && !strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_AAC)) {
+        mAudioSource = OMXCodec::Create(
+            mClient.interface(), mAudioTrack->getFormat(),
+            false,  // createEncoder
+            mAudioTrack,
+            "OMX.Exynos.AAC.Decoder");
+        if (mAudioSource == NULL) {
+            mAudioSource = OMXCodec::Create(
+                    mClient.interface(), mAudioTrack->getFormat(),
+                    false,  // createEncoder
+                    mAudioTrack);
+        }
+#ifndef NO_ITTIAM_FLAC
+     } else if (mVideoTrack == NULL && !strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_FLAC)) {
+        mAudioSource = OMXCodec::Create(
+            mClient.interface(), mAudioTrack->getFormat(),
+            false,  // createEncoder
+            mAudioTrack,
+            "OMX.Exynos.FLAC.Decoder");
+        if (mAudioSource == NULL) {
+            mAudioSource = OMXCodec::Create(
+                    mClient.interface(), mAudioTrack->getFormat(),
+                    false,  // createEncoder
+                    mAudioTrack);
+        }
+#endif
+#endif
     } else {
         // If offloading we still create a OMX decoder as a fall-back
         // but we don't start it
@@ -2124,6 +2166,28 @@ void AwesomePlayer::postCheckAudioStatusEvent(int64_t delayUs) {
         return;
     }
     mAudioStatusEventPending = true;
+
+#ifdef SAMSUNG_AV_SYNC
+    /*
+     * Do not honor delay when audio reached EOS
+     * in order to change immediately time source from AudioPlayer to SystemTime
+     */
+    status_t finalStatus;
+    /*
+     * Checking mOffloadAudio is not added with SAMSUNG_AV_SYNC,
+     * but it's okay to be deleted when SAMSUNG_AV_SYNC is not valid.
+     * EOS checking logic is still useful, but not anymore in offload mode.
+     * When seeking in [OFFLOAD MODE], AudioPlayer:fillBuffer() posts SEEK_COMPLETE with mLock held.
+     * The posting leads to this function and checks whether AudioPlayer reached EOS or not.
+     * But the checking also trys to hold mLock, so deadlock happends.
+     */
+    if (!mOffloadAudio) {
+        if (mWatchForAudioEOS && mAudioPlayer->reachedEOS(&finalStatus)) {
+            delayUs = 0;
+        }
+    }
+#endif
+
     // Do not honor delay when looping in order to limit audio gap
     if (mFlags & (LOOPING | AUTO_LOOPING)) {
         delayUs = 0;
